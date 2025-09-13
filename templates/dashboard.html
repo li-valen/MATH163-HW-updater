@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homework Monitor Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 5px solid #28a745;
+        }
+        
+        .status-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .status-label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .status-value {
+            color: #333;
+            font-family: monospace;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .logs-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .logs-container h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+        
+        .log-entry {
+            background: white;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 3px solid #007bff;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #333;
+        }
+        
+        .log-entry.update {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .log-entry.error {
+            border-left-color: #dc3545;
+            background: #fff8f8;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Homework Monitor</h1>
+            <p>Monitor your professor's website for homework updates</p>
+        </div>
+        
+        <div class="content">
+            <div class="controls">
+                <button id="startBtn" class="btn btn-primary">Start Monitoring</button>
+                <button id="stopBtn" class="btn btn-danger" disabled>Stop Monitoring</button>
+                <button id="refreshBtn" class="btn btn-primary">Refresh Status</button>
+            </div>
+            
+            <div id="alertContainer"></div>
+            
+            <div class="status-card">
+                <h3>📊 Monitoring Status</h3>
+                <div class="status-item">
+                    <span class="status-label">Status:</span>
+                    <span id="monitoringStatus" class="status-value">Loading...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Last Check:</span>
+                    <span id="lastCheck" class="status-value">Loading...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Content Hash:</span>
+                    <span id="contentHash" class="status-value">Loading...</span>
+                </div>
+            </div>
+            
+            <div class="logs-container">
+                <h3>📝 Recent Activity</h3>
+                <div id="logsContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading logs...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let refreshInterval;
+        
+        function showAlert(message, type = 'success') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+        
+        function updateStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('monitoringStatus').textContent = 
+                        data.monitoring ? '🟢 Running' : '🔴 Stopped';
+                    document.getElementById('lastCheck').textContent = 
+                        data.last_check ? new Date(data.last_check).toLocaleString() : 'Never';
+                    document.getElementById('contentHash').textContent = data.hash || 'Unknown';
+                    
+                    // Update button states
+                    document.getElementById('startBtn').disabled = data.monitoring;
+                    document.getElementById('stopBtn').disabled = !data.monitoring;
+                })
+                .catch(error => {
+                    console.error('Error fetching status:', error);
+                    showAlert('Error fetching status', 'danger');
+                });
+        }
+        
+        function updateLogs() {
+            fetch('/api/logs')
+                .then(response => response.json())
+                .then(logs => {
+                    const container = document.getElementById('logsContainer');
+                    if (logs.length === 0) {
+                        container.innerHTML = '<div class="loading">No logs available</div>';
+                        return;
+                    }
+                    
+                    container.innerHTML = logs.map(log => {
+                        let className = 'log-entry';
+                        if (log.includes('WEBSITE UPDATED') || log.includes('🎉')) {
+                            className += ' update';
+                        } else if (log.includes('Error') || log.includes('Failed')) {
+                            className += ' error';
+                        }
+                        return `<div class="${className}">${log}</div>`;
+                    }).join('');
+                })
+                .catch(error => {
+                    console.error('Error fetching logs:', error);
+                });
+        }
+        
+        function startMonitoring() {
+            fetch('/api/start', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('Monitoring started successfully!');
+                        updateStatus();
+                    } else {
+                        showAlert('Failed to start monitoring', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting monitoring:', error);
+                    showAlert('Error starting monitoring', 'danger');
+                });
+        }
+        
+        function stopMonitoring() {
+            fetch('/api/stop', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('Monitoring stopped successfully!');
+                        updateStatus();
+                    } else {
+                        showAlert('Failed to stop monitoring', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error stopping monitoring:', error);
+                    showAlert('Error stopping monitoring', 'danger');
+                });
+        }
+        
+        // Event listeners
+        document.getElementById('startBtn').addEventListener('click', startMonitoring);
+        document.getElementById('stopBtn').addEventListener('click', stopMonitoring);
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            updateStatus();
+            updateLogs();
+        });
+        
+        // Initial load
+        updateStatus();
+        updateLogs();
+        
+        // Auto-refresh every 30 seconds
+        refreshInterval = setInterval(() => {
+            updateStatus();
+            updateLogs();
+        }, 30000);
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>
+
