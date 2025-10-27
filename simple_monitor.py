@@ -13,7 +13,8 @@ import os
 from datetime import datetime
 import schedule
 import config
-from twilio.rest import Client as TwilioClient
+import smtplib
+from email.mime.text import MIMEText
 
 class SimpleHomeworkMonitor:
     def __init__(self, url, check_interval_minutes=360):
@@ -31,7 +32,12 @@ class SimpleHomeworkMonitor:
         """Log messages with timestamp"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_message = f"[{timestamp}] {message}"
-        print(log_message)
+        try:
+            print(log_message)
+        except UnicodeEncodeError:
+            # Fallback for systems that can't handle Unicode
+            safe_message = message.encode('ascii', 'ignore').decode('ascii')
+            print(f"[{timestamp}] {safe_message}")
         
         with open(self.log_file, "a", encoding="utf-8") as f:
             f.write(log_message + "\n")
@@ -98,7 +104,15 @@ class SimpleHomeworkMonitor:
                 session = requests.Session()
                 session.headers.update(headers)
                 
-                response = session.get(self.url, timeout=30, allow_redirects=True)
+                # Add authentication if configured
+                auth = None
+                if hasattr(config, 'AUTH_USERNAME') and hasattr(config, 'AUTH_PASSWORD'):
+                    if config.AUTH_USERNAME and config.AUTH_PASSWORD:
+                        from requests.auth import HTTPBasicAuth
+                        auth = HTTPBasicAuth(config.AUTH_USERNAME, config.AUTH_PASSWORD)
+                        self.log(f"Using HTTP Basic Auth as {config.AUTH_USERNAME}")
+                
+                response = session.get(self.url, timeout=30, allow_redirects=True, auth=auth)
                 
                 self.log(f"Strategy {i} - Status: {response.status_code}, Length: {len(response.text)}")
                 
@@ -176,33 +190,83 @@ class SimpleHomeworkMonitor:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         # Console notification
-        print("\n" + "="*50)
-        print("🎉 HOMEWORK UPDATE DETECTED! 🎉")
-        print("="*50)
-        print(f"Time: {timestamp}")
-        print(f"URL: {self.url}")
-        print("="*50 + "\n")
+        try:
+            print("\n" + "="*50)
+            print("HOMEWORK UPDATE DETECTED!")
+            print("="*50)
+            print(f"Time: {timestamp}")
+            print(f"URL: {self.url}")
+            print("="*50 + "\n")
+        except UnicodeEncodeError:
+            print("\n" + "="*50)
+            print("HOMEWORK UPDATE DETECTED!")
+            print("="*50)
+            print(f"Time: {timestamp}")
+            print(f"URL: {self.url}")
+            print("="*50 + "\n")
         
-        # SMS notification via Twilio
+        # Email notification (reliable)
+        if config.NOTIFICATION_METHODS.get("email", False):
+            try:
+                email_settings = config.EMAIL_SETTINGS
+                smtp_server = email_settings.get("smtp_server", "")
+                smtp_port = email_settings.get("smtp_port", 587)
+                username = email_settings.get("username", "")
+                password = email_settings.get("password", "")
+                to_email = email_settings.get("to_email", "")
+                
+                if smtp_server and username and password and to_email:
+                    # Create email message
+                    msg = MIMEText(f"HOMEWORK UPDATE: Your professor's site changed at {timestamp}.\n\nCheck it out: {self.url}")
+                    msg['From'] = username
+                    msg['To'] = to_email
+                    msg['Subject'] = "Homework Update Alert - Discrete Math I"
+                    
+                    # Send email via SMTP
+                    server = smtplib.SMTP(smtp_server, smtp_port)
+                    server.starttls()
+                    server.login(username, password)
+                    server.send_message(msg)
+                    server.quit()
+                    
+                    self.log("Email notification sent successfully!")
+                else:
+                    self.log("Email not sent - missing email config values")
+            except Exception as e:
+                self.log(f"Failed to send email: {e}")
+        
+        # SMS notification via email-to-SMS (FREE - may be unreliable)
         if config.NOTIFICATION_METHODS.get("sms", False):
             try:
-                sid = config.TWILIO_SETTINGS.get("account_sid", "")
-                token = config.TWILIO_SETTINGS.get("auth_token", "")
-                from_number = config.TWILIO_SETTINGS.get("from_number")
-                to_number = config.TWILIO_SETTINGS.get("to_number")
-                template = config.TWILIO_SETTINGS.get("message_template")
-                if sid and token and from_number and to_number and template:
-                    client = TwilioClient(sid, token)
-                    body = template.format(timestamp=timestamp, url=self.url)
-                    client.messages.create(body=body, from_=from_number, to=to_number)
-                    self.log("✅ SMS sent successfully!")
+                email_settings = config.EMAIL_SETTINGS
+                smtp_server = email_settings.get("smtp_server", "")
+                smtp_port = email_settings.get("smtp_port", 587)
+                username = email_settings.get("username", "")
+                password = email_settings.get("password", "")
+                to_sms = email_settings.get("to_sms", "")
+                
+                if smtp_server and username and password and to_sms:
+                    # Create message
+                    msg = MIMEText(f"HOMEWORK UPDATE: Your professor's site changed at {timestamp}. {self.url}")
+                    msg['From'] = username
+                    msg['To'] = to_sms
+                    msg['Subject'] = "Homework Update Alert"
+                    
+                    # Send email-to-SMS via SMTP
+                    server = smtplib.SMTP(smtp_server, smtp_port)
+                    server.starttls()
+                    server.login(username, password)
+                    server.send_message(msg)
+                    server.quit()
+                    
+                    self.log("SMS sent successfully via email-to-SMS!")
                 else:
-                    self.log("❌ SMS not sent - missing Twilio config values")
+                    self.log("SMS not sent - missing email config values (username, password, or to_sms)")
             except Exception as e:
-                self.log(f"❌ Failed to send SMS: {e}")
+                self.log(f"Failed to send SMS: {e}")
         
         # Log notification
-        self.log("📧 Notification sent!")
+        self.log("Notification sent!")
     
     def start_monitoring(self):
         """Start the monitoring process"""

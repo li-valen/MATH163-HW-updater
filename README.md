@@ -10,7 +10,8 @@ A Python-based web monitoring tool that detects changes on your professor's webs
 - 📝 **Logging**: Comprehensive logging of all monitoring activities
 - ⚙️ **Configurable**: Easy-to-modify settings for different monitoring needs
 - 🔄 **Persistent State**: Remembers the last known state to detect changes accurately
-- 📱 **SMS Notifications (Twilio)**: Get text messages when homework is posted
+- 📧 **Email Notifications**: Get email alerts when homework is posted
+- 🔐 **Authentication Support**: Handles HTTP Basic Auth for protected sites
 - ⏰ **6-Hour Auto-Refresh**: Checks for updates every 6 hours automatically
 
 ## Quick Start
@@ -21,12 +22,12 @@ A Python-based web monitoring tool that detects changes on your professor's webs
 pip install -r requirements.txt
 ```
 
-### 2. Configure SMS (Twilio)
+### 2. Configure Settings
 
-Edit `config.py` and set `TWILIO_SETTINGS` values:
-- `account_sid`, `auth_token`
-- `from_number` (your Twilio number)
-- `to_number` (your phone)
+Edit `config.py` and set up:
+- Website authentication: `AUTH_USERNAME` and `AUTH_PASSWORD`
+- Email notifications: `EMAIL_SETTINGS` with your Gmail credentials
+- Check interval and other monitoring settings
 
 ### 3. Run the Monitor
 
@@ -45,14 +46,6 @@ python web_interface.py
 # Then open http://localhost:5000 in your browser
 ```
 
-### 4. Configure Settings
-
-Edit `config.py` to customize:
-- Check interval (default: 6 hours)
-- Target URL
-- Twilio credentials
-- Notification methods
-- Web interface settings
 
 ## How It Works
 
@@ -89,16 +82,20 @@ discrete/
 - `console`: Print notifications to console
 - `log_file`: Write notifications to log file
 - `desktop`: Desktop notifications (requires additional setup)
-- `email`: Email notifications (requires SMTP configuration)
+- `email`: Email notifications (requires SMTP configuration) - **Recommended**
 - `webhook`: Webhook notifications (Discord, Slack, etc.)
-- `sms`: SMS notifications via Twilio
+- `sms`: SMS notifications (currently disabled, email-to-SMS gateways are unreliable)
 
-### Twilio Settings
-- `account_sid`: Your Twilio Account SID
-- `auth_token`: Your Twilio Auth Token
-- `from_number`: Your Twilio phone number (E.164 format)
-- `to_number`: Destination phone number (E.164 format)
-- `message_template`: Message text template
+### Email Settings (for notifications)
+- `username`: Your Gmail address
+- `password`: Your Gmail app password (get from Google Account settings)
+- `to_email`: Where to send notifications
+- `smtp_server`: SMTP server (default: smtp.gmail.com)
+- `smtp_port`: SMTP port (default: 587)
+
+### Website Authentication
+- `AUTH_USERNAME`: Username for HTTP Basic Auth
+- `AUTH_PASSWORD`: Password for HTTP Basic Auth
 
 ## Usage Examples
 
